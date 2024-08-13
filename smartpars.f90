@@ -1,11 +1,23 @@
+!
+! Syntax for addrule
+!   call object%addrule(rule_t(...), scalar_component_pointer)
+!   call object%addrule(rule_t(...), num, vector_component_pointer)
+!
+! where rule_t(...) is
+!   rule_t(keyword, [idefval=int-scalar | idefvals=int-array] )
+!   rule_t(keyword, [rdefval=dp-scalar | rdefvals=dp-array] )
+!
+
   module smartpars_mod
     use iso_fortran_env, only : DP => real64, error_unit, output_unit
+    use file2mat_mod, only : string_t, read_strings
     implicit none (external,type)
     private
     public DP
 
     integer, parameter :: &
       PTYPE_INT = 1, PTYPE_REAL = 2
+
 
     type, public :: rule_t
       private
@@ -25,6 +37,8 @@
       module procedure rule_new
     end interface
 
+
+!TODO Improve error hanfling and messagess (in loadfromfile)
     type, public, abstract :: smartpars_at
       private
       integer, allocatable :: ipars(:)
@@ -35,14 +49,16 @@
       ! Initialize or Copy before use
       procedure :: init
       generic :: assignment(=) => copy
+      ! Undefine all values
+      procedure :: undefine_all
       ! Set default values
       procedure :: setdefvals
       ! Load values from file
-    ! procedure :: loadfromfile
+      procedure :: loadfromfile
       ! Write values to unit
       procedure :: write2unit
       ! Test if all non-default values were given
-    ! procedure :: arevalidvalues
+      procedure :: all_defined
       ! For debugging
       procedure :: print => smartpars_print
       ! For implementation of child types
@@ -53,8 +69,9 @@
       procedure, private, pass(new) :: copy
     end type
 
+
     abstract interface
-      subroutine localize_ai(this)
+      pure subroutine localize_ai(this)
         import smartpars_at
         implicit none
         class(smartpars_at), intent(inout), target :: this
@@ -63,16 +80,7 @@
 
   contains
 
-!
-! Syntax for addrule
-!   call object%addrule(rule_t(...), scalar_component_pointer)
-!   call object%addrule(rule_t(...), num, vector_component_pointer)
-!
-! where rule_t(...) is
-!   rule_t(keyword, [idefval=int-scalar | idefvals=int-array] )
-!   rule_t(keyword, [rdefval=dp-scalar | rdefvals=dp-array] )
-!
-    function rule_new(keyword, idefval, idefvals, rdefval, rdefvals) result(new)
+    pure function rule_new(keyword, idefval, idefvals, rdefval, rdefvals) result(new)
       character(len=*), intent(in) :: keyword
       integer, intent(in), optional :: idefval
       real(DP), intent(in), optional :: rdefval
@@ -92,7 +100,7 @@
       else if (.not. present(idefval) .and. present(idefvals)) then
         new%idefvals = idefvals
       else if (present(idefval) .and. present(idefvals)) then
-        write(error_unit,'(a)') 'rule_new error - both idefval and idefvals present'
+!       write(error_unit,'(a)') 'rule_new error - both idefval and idefvals present'
         error stop
       end if
       if (present(rdefval) .and. .not. present(rdefvals)) then
@@ -100,7 +108,7 @@
       else if (.not. present(rdefval) .and. present(rdefvals)) then
         new%rdefvals = rdefvals
       else if (present(rdefval) .and. present(rdefvals)) then
-        write(error_unit,'(a)') 'rule_new error - both rdefval and rdefvals present'
+!       write(error_unit,'(a)') 'rule_new error - both rdefval and rdefvals present'
         error stop
       end if
     end function rule_new
@@ -177,7 +185,7 @@
 ! Complete user-given rule, add it to rules table, link pointer.
 ! Combinations for integer/real and scalar/rank-1 array
 !
-    subroutine addrule_int(this, rule, ivar)
+    pure subroutine addrule_int(this, rule, ivar)
       class(smartpars_at), intent(inout), target :: this
       type(rule_t), intent(in) :: rule
       integer, pointer, intent(inout) :: ivar
@@ -191,7 +199,7 @@
       this%iused = this%iused + rule0%n
       rule0%is_defined=.false.
       if (rule0%pos+rule0%n-1 > size(this%ipars)) then
-        write(error_unit,'(a)') 'Error - out of bounds of ipars'
+!       write(error_unit,'(a)') 'Error - out of bounds of ipars'
         error stop
       end if
 
@@ -199,7 +207,7 @@
       ivar => this%ipars(rule0%pos)
     end subroutine addrule_int
 
-    subroutine addrule_intarr(this, rule, n, iarr)
+    pure subroutine addrule_intarr(this, rule, n, iarr)
       class(smartpars_at), intent(inout), target :: this
       type(rule_t), intent(in) :: rule
       integer, intent(in) :: n
@@ -213,7 +221,7 @@
       this%iused = this%iused + rule0%n
       rule0%is_defined=.false.
       if (rule0%pos+rule0%n-1 > size(this%ipars)) then
-        write(error_unit,'(a)') 'Error - out of bounds of ipars'
+!       write(error_unit,'(a)') 'Error - out of bounds of ipars'
         error stop
       end if
 
@@ -221,7 +229,7 @@
       iarr => this%ipars(rule0%pos:rule0%pos+rule0%n-1)
     end subroutine addrule_intarr
 
-    subroutine addrule_real(this, rule, rvar)
+    pure subroutine addrule_real(this, rule, rvar)
       class(smartpars_at), intent(inout), target :: this
       type(rule_t), intent(in) :: rule
       real(DP), pointer, intent(inout) :: rvar
@@ -235,7 +243,7 @@
       this%rused = this%rused + rule0%n
       rule0%is_defined=.false.
       if (rule0%pos+rule0%n-1 > size(this%rpars)) then
-        write(error_unit,'(a)') 'Error - out of bounds of rpars'
+!       write(error_unit,'(a)') 'Error - out of bounds of rpars'
         error stop
       end if
 
@@ -243,7 +251,7 @@
       rvar => this%rpars(rule0%pos)
     end subroutine addrule_real
 
-    subroutine addrule_realarr(this, rule, n, rarr)
+    pure subroutine addrule_realarr(this, rule, n, rarr)
       class(smartpars_at), intent(inout), target :: this
       type(rule_t), intent(in) :: rule
       integer, intent(in) :: n
@@ -257,7 +265,7 @@
       this%rused = this%rused + rule0%n
       rule0%is_defined=.false.
       if (rule0%pos+rule0%n-1 > size(this%rpars)) then
-        write(error_unit,'(a)') 'Error - out of bounds of rpars'
+!       write(error_unit,'(a)') 'Error - out of bounds of rpars'
         error stop
       end if
 
@@ -266,14 +274,33 @@
     end subroutine addrule_realarr
 
 
-    subroutine setdefvals(this, overwrite)
+    pure function all_defined(this) result(yes)
+      class(smartpars_at), intent(in) :: this
+      logical :: yes
+
+      if (.not. allocated(this%ipars)) &
+        & error stop 'object not initialized'
+      yes = all(this%rules%is_defined)
+    end function all_defined
+
+
+    pure subroutine setdefvals(this, overwrite)
       class(smartpars_at), intent(inout) :: this
       logical, intent(in), optional :: overwrite
 !
-!
+! Set values of undefined parameters to its default values. If parameter
+! is already defined, its value is unchanged,
+! unless "overwrite=TRUE" is provided.
+! Parameters without default values are ignored.
 !
       logical :: overwrite0
       integer :: i, j
+
+      ! test object has been initialized
+      if (.not. allocated(this%ipars)) then
+!       write(error_unit,'("setdefvals - object not initialized")')
+        error stop
+      end if
 
       ! do not overwrite unless explicitly told
       overwrite0 = .false.
@@ -302,7 +329,9 @@
     subroutine write2unit(this, fid)
       class(smartpars_at), intent(in) :: this
       integer, intent(in) :: fid
-
+!
+! Write <keyword> <value(s)> of all defined parameters to unit "fid"
+!
       integer :: i, maxlen
 
       maxlen = 0
@@ -314,6 +343,7 @@
 
       do i=1, size(this%rules)
         associate(r=>this%rules(i))
+          if (.not. r%is_defined) cycle
           write(fid,'(a)',advance='no') &
               & r%keyword//repeat(' ',1+maxlen-len(r%keyword))
           select case(r%ptype)
@@ -327,6 +357,152 @@
         end associate
       end do
     end subroutine write2unit
+
+
+    pure subroutine undefine_all(this)
+      class(smartpars_at), intent(inout) :: this
+!
+! Mark all parameters as undefined
+!
+      this%rules%is_defined = .false.
+    end subroutine undefine_all
+
+
+    subroutine loadfromfile(this, file, overwrite)
+      class(smartpars_at), intent(inout) :: this
+      character(len=*), intent(in) :: file
+      logical, intent(in), optional :: overwrite
+!
+! Load from file
+!
+      type(string_t), allocatable :: lines(:)
+      type(string_t) :: word, trunk
+      integer :: i, j, iostat
+      character(len=100) :: errmsg, errmsg2
+      logical :: overwrite0
+      character(len=1) first_char
+      logical, allocatable :: is_defined_here(:)
+
+      ! verify object has been initialized
+      if (.not. allocated(this%ipars)) then
+        write(error_unit,'("loadfromfile - object not initialized")')
+        error stop
+      end if
+
+      ! defined values are protected (unless "overwrite=T")
+      overwrite0 = .false.
+      if (present(overwrite)) overwrite0 = overwrite
+      allocate(is_defined_here(size(this%rules)), source=.false.)
+
+      ! parse lines from file
+      print *, 'Loading parameters from "'//trim(file)//'" ...'
+      errmsg = ''
+      lines = read_strings(file)
+      do i=1,size(lines)
+        ! skip empty lines
+        if (len(lines(i)%str)==0) cycle
+
+        ! skip comment lines
+        first_char = adjustl(lines(i)%str)
+        if (scan('%!#',first_char) /= 0) cycle
+
+        ! identify keyword
+        call chop_first_word(lines(i)%str, word, trunk)
+        j = findrule(this%rules, word%str)
+        if (j==0) then
+          write(errmsg, '("keyword """,a,""" on line",i0," not recognized")') word%str, i
+          exit
+        end if
+
+        associate(r => this%rules(j))
+          ! check if already defined
+          if (is_defined_here(j)) then
+            write(errmsg,'("Parameter ",a," duplicity found")') word%str
+            exit
+          else if (r%is_defined .and. .not. overwrite0) then
+            write(errmsg,'("Parameter ",a," already defined")') word%str
+            exit
+          else if (r%is_defined) then
+            write(output_unit,'("Warning: Parameter ",a," is being overwritten")') word%str
+          end if
+
+          ! try to read
+          select case(r%ptype)
+          case(PTYPE_INT)
+            read(trunk%str,*,iomsg=errmsg2,iostat=iostat) &
+              this%ipars(r%pos:r%pos+r%n-1)
+          case(PTYPE_REAL)
+            read(trunk%str,*,iomsg=errmsg2,iostat=iostat) &
+              this%rpars(r%pos:r%pos+r%n-1)
+          case default
+            error stop 'unknown ptype'
+          end select
+          if (iostat/=0) then
+            errmsg = "Reading error "//trim(errmsg2)
+            exit
+          else
+            ! value read succesfully
+            r%is_defined = .true.
+            is_defined_here(j) = .true.
+          end if
+        end associate
+      end do
+
+      if (i /= size(lines)+1) then
+        print *, 'ERROR - '//errmsg
+        error stop
+      end if
+    end subroutine loadfromfile
+
+
+    pure subroutine chop_first_word(line, word, trunk)
+      character(len=*), intent(in) :: line
+      type(string_t), intent(out) :: word, trunk
+
+      character(len=1) :: first_nonblank_char
+      integer :: ifch, sp, tab
+
+      ! special case if line is blank
+      if (len_trim(adjustl(line))==0) then
+        word = string_t('')
+        trunk = string_t('')
+        return
+      end if
+
+      first_nonblank_char = adjustl(line)
+      ifch = scan(line, first_nonblank_char)
+
+      sp = scan(line(ifch:), ' ')
+      tab = scan(line(ifch:), achar(9))
+      sp = minval([sp, tab], dim=1, mask=[sp, tab]>0)
+      if (sp==0) then
+        sp = len(line)+1
+      else
+        sp = sp+ifch-1
+      end if
+      word = string_t(trim(adjustl(line(:sp-1))))
+      trunk = string_t(trim(adjustl(line(sp:))))
+!print *, 'line <'//line//'>'
+!print *, 'word <'//word%str//'>'
+!print *, 'trun <'//trunk%str//'>'
+    end subroutine chop_first_word
+
+
+    pure integer function findrule(rules, keyword) result(id)
+      type(rule_t), intent(in) :: rules(:)
+      character(len=*), intent(in) :: keyword
+!
+! Helper to return the position of keyword on the line
+!
+      integer :: i
+      id = 0
+      do i=1,size(rules)
+        if (rules(i)%keyword==keyword) then
+          id = i
+          exit
+        end if
+      end do
+    end function findrule
 
 
     subroutine smartpars_print(this)

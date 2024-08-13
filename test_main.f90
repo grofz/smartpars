@@ -7,14 +7,19 @@
 
     print *, 'Hello from main test'
     call pars%init(10,10)
+    call pars%loadfromfile('myfile.txt')
     call pars%setdefvals()
+    print *, 'All defined? ', pars%all_defined()
+    call pars%write2unit(output_unit)
+    !call pars%print()
 
-    print *, size(pars%vals)
-
-
-    print *, 'old pars before assignment'
-    call pars%print()
-    call pars2%print()
+    print *
+    print *, 'model ', pars%model
+    print *, 'typ   ', pars%typ
+    print *, 'vals  ', pars%vals
+    print *, 'dif1  ', pars%dif1
+    print *, 'koefs  ', pars%koef
+    stop 0
 
     pars2 = pars
     pars2%model = 30

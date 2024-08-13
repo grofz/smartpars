@@ -7,6 +7,7 @@ fflags = -Og -g -Wall -Wextra -pedantic -std=f2018 -fimplicit-none -fcheck=all -
 cc = gfortran $(fflags)
 
 obj = \
+			file2mat.o \
 			smartpars.o \
 			test_localpars.o \
 
@@ -26,6 +27,9 @@ $(exe) : $(obj) $(main)
 $(obj) $(main) : Makefile
 
 # module dependencies
+
+smartpars.o : file2mat.o
+
 test_localpars.o : smartpars.o
 
 $(main) : test_localpars.o
