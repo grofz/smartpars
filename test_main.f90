@@ -4,25 +4,28 @@
     implicit none
 
     type(pars_t) :: pars, pars2
+    character(len=:), allocatable :: errmsg
 
     print *, 'Hello from main test'
-    call pars%init(10,10)
-    call pars%loadfromfile('myfile.txt')
+    call pars%init()
+    errmsg='none'
     call pars%setdefvals()
+    call pars%loadfromfile('myfile.txt',errmsg=errmsg,overwrite=.true.)
+    if (allocated(errmsg)) then
+      print *, 'ERROR -'//errmsg
+      stop 1
+    else
+      print *, 'Loading ok...'
+    end if
     print *, 'All defined? ', pars%all_defined()
-    call pars%write2unit(output_unit)
-    !call pars%print()
+    call pars%write2unit(output_unit, include_undefined=.true.)
 
-    print *
-    print *, 'model ', pars%model
-    print *, 'typ   ', pars%typ
-    print *, 'vals  ', pars%vals
-    print *, 'dif1  ', pars%dif1
-    print *, 'koefs  ', pars%koef
+    print *, 'Copy? '
+    pars2 = pars
+    call pars2%write2unit(output_unit)
+    call pars2%print()
     stop 0
 
-    pars2 = pars
-    pars2%model = 30
 
     print *, 'old pars after assignment'
     call pars%print()
