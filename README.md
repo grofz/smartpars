@@ -66,7 +66,7 @@ Use the following code template to define the new user type "localpars_t"
       call this%addrule(rule_t('srarr2',[42._DP, 69._DP]), 2, this%srarr2)
     end subroutine localize
   end module localpars_mod
-'''
+```
 
 ### Use user parameter type
 
@@ -78,14 +78,13 @@ Declare and initialize structures "pars"
     type(pars_t) :: pars, pars2
     :
     call pars%init()
-
-'''
+```
 
 ### Set default values to components with default values
 
 ```fortran
     call pars%setdefvals()
-'''
+```
 
 ### Load values of components from the file
 
@@ -99,26 +98,26 @@ Declare and initialize structures "pars"
     else
       print *, 'Loading ok...'
     end if
-'''
+```
 
 ### Check if all components are defined
 
 ```fortran
     print *, 'All defined? ', pars%all_defined()
-'''
+```
 
 ### Dump values to specified unit
 
 ```fortran
     call pars%write2unit(output_unit, include_undefined=.true.)
-'''
+```
 
 ### Copy to another structure and show
 
 ```fortran
     pars2 = pars
     call pars2%print()
-'''
+```
 
 ### Use parameter values in the code
 
@@ -127,5 +126,5 @@ You can directly access the pointers in own code
 ```fortran
   x = pars%pis
   pars%pis = 11
-'''
+```
 
